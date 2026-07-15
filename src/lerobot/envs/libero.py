@@ -327,7 +327,8 @@ class LiberoEnv(gym.Env):
     def reset(self, seed=None, **kwargs):
         self._ensure_env()
         super().reset(seed=seed)
-        self._env.seed(seed)
+        if hasattr(self._env, "seed") and hasattr(self._env, "env"):
+            self._env.seed(seed)
         raw_obs = self._env.reset()
         if self.init_states and self._init_states is not None:
             raw_obs = self._env.set_init_state(self._init_states[self.init_state_id % len(self._init_states)])

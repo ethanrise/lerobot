@@ -142,7 +142,9 @@ def make_pi0_pre_post_processors(
         AddBatchDimensionProcessorStep(),
         Pi0NewLineProcessor(),  # Add newlines before tokenization for PaliGemma
         TokenizerProcessorStep(
-            tokenizer_name="google/paligemma-3b-pt-224",
+            # google/paligemma-3b-pt-224 is a gated HF model; see the same workaround in
+            # policies/pi05/processor_pi05.py for why this points at the local ModelScope cache.
+            tokenizer_name="/home/ethan/.cache/modelscope/hub/models/google/paligemma-3b-pt-224",
             max_length=config.tokenizer_max_length,
             padding_side="right",
             padding="max_length",

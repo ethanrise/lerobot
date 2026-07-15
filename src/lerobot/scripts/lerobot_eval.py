@@ -754,10 +754,16 @@ def eval_main(cfg: EvalPipelineConfig):
     policy.eval()
 
     # The inference device is automatically set to match the detected hardware, overriding any previous device settings from training to ensure compatibility.
+    # preprocessor_overrides = {
+    #     "device_processor": {"device": str(policy.config.device)},
+    #     "rename_observations_processor": {"rename_map": cfg.rename_map},
+    # }
     preprocessor_overrides = {
         "device_processor": {"device": str(policy.config.device)},
         "rename_observations_processor": {"rename_map": cfg.rename_map},
+        "tokenizer_processor": {"tokenizer_name": "/home/ethan/.cache/modelscope/hub/models/google/paligemma-3b-pt-224"},
     }
+
 
     preprocessor, postprocessor = make_pre_post_processors(
         policy_cfg=cfg.policy,
@@ -1022,7 +1028,15 @@ def eval_policy_all(
                 _accumulate_to(tg, metrics)
                 per_task_infos.append({"task_group": tg, "task_id": tid, "metrics": metrics})
             finally:
-                env.close()
+                # Only close lazy async wrappers between tasks.
+                #
+                # In training, `eval_env` is created once and reused at every eval step.
+                # Closing non-lazy envs here can leave permanently-closed vec env objects
+                # inside `eval_env`, which may hang on a later eval when reset/step is called
+                # again. Lazy wrappers are safe to close because they can recreate workers on
+                # next access via `_ensure`.
+                if hasattr(env, "_ensure"):
+                    env.close()
                 # Prefetch next task's workers *after* closing current env to prevent
                 # GPU memory overlap between consecutive tasks.
                 if i + 1 < len(tasks):
@@ -1043,7 +1057,8 @@ def eval_policy_all(
                     _accumulate_to(tg, metrics)
                     per_task_infos.append({"task_group": tg, "task_id": tid, "metrics": metrics})
                 finally:
-                    env.close()
+                    if hasattr(env, "_ensure"):
+                        env.close()
 
     # compute aggregated metrics helper (robust to lists/scalars)
     def _agg_from_list(xs):

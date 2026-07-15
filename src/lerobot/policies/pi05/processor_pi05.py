@@ -149,7 +149,11 @@ def make_pi05_pre_post_processors(
         ),
         Pi05PrepareStateTokenizerProcessorStep(max_state_dim=config.max_state_dim),
         TokenizerProcessorStep(
-            tokenizer_name="google/paligemma-3b-pt-224",
+            # google/paligemma-3b-pt-224 is a gated HF model; HF_ENDPOINT mirror redirects back to
+            # huggingface.co for the actual file, which then 401s without a token that has accepted
+            # the gate. Point at the local ModelScope-cached copy instead (same workaround as
+            # lerobot_eval.py's preprocessor_overrides for the eval path).
+            tokenizer_name="/home/ethan/.cache/modelscope/hub/models/google/paligemma-3b-pt-224",
             max_length=config.tokenizer_max_length,
             padding_side="right",
             padding="max_length",
