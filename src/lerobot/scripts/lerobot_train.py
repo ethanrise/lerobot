@@ -623,9 +623,8 @@ def train(cfg: TrainPipelineConfig, accelerator: "Accelerator | None" = None):
                         wandb_log_dict.update({f"sample_weighting/{k}": v for k, v in weighter_stats.items()})
                     wandb_logger.log_dict(wandb_log_dict, step)
                 if swanlab_logger:
+                    # Policy sub-losses are aggregated into the tracker by update_policy.
                     swanlab_log_dict = train_tracker.to_dict()
-                    if output_dict:
-                        swanlab_log_dict.update(output_dict)
                     if sample_weighter is not None:
                         weighter_stats = sample_weighter.get_stats()
                         swanlab_log_dict.update(
