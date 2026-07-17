@@ -161,6 +161,7 @@ wandb/
 
 # Dev scripts
 .dev/
+train_cli.md
 
 # Data folders
 data/

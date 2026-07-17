@@ -46,6 +46,7 @@ from lerobot.common.train_utils import (
     save_checkpoint,
     update_last_checkpoint,
 )
+from lerobot.common.swanlab_utils import SwanLabLogger
 from lerobot.common.wandb_utils import WandBLogger
 from lerobot.configs import JobConfig, parser
 from lerobot.configs.train import TrainPipelineConfig
@@ -238,6 +239,10 @@ def train(cfg: TrainPipelineConfig, accelerator: "Accelerator | None" = None):
         wandb_logger = None
         if is_main_process:
             logging.info(colored("Logs will be saved locally.", "yellow", attrs=["bold"]))
+    if cfg.swanlab.enable and is_main_process:
+        swanlab_logger = SwanLabLogger(cfg)
+    else:
+        swanlab_logger = None
 
     if cfg.seed is not None:
         set_seed(cfg.seed, accelerator=accelerator)
@@ -613,6 +618,16 @@ def train(cfg: TrainPipelineConfig, accelerator: "Accelerator | None" = None):
                         weighter_stats = sample_weighter.get_stats()
                         wandb_log_dict.update({f"sample_weighting/{k}": v for k, v in weighter_stats.items()})
                     wandb_logger.log_dict(wandb_log_dict, step)
+                if swanlab_logger:
+                    swanlab_log_dict = train_tracker.to_dict()
+                    if output_dict:
+                        swanlab_log_dict.update(output_dict)
+                    if sample_weighter is not None:
+                        weighter_stats = sample_weighter.get_stats()
+                        swanlab_log_dict.update(
+                            {f"sample_weighting/{k}": v for k, v in weighter_stats.items()}
+                        )
+                    swanlab_logger.log_dict(swanlab_log_dict, step)
             train_tracker.reset_averages()
 
         if is_eval_step:
@@ -637,6 +652,8 @@ def train(cfg: TrainPipelineConfig, accelerator: "Accelerator | None" = None):
                 logging.info(f"step {step}: eval_loss={eval_loss:.4f}")
                 if wandb_logger:
                     wandb_logger.log_dict({"eval_loss": eval_loss}, step=step, mode="eval")
+                if swanlab_logger:
+                    swanlab_logger.log_dict({"loss": eval_loss}, step=step, mode="eval")
 
         if cfg.save_checkpoint and is_saving_step:
             # Under FSDP, gathering the full model + optimizer state dicts is a cross-rank collective,
@@ -735,6 +752,8 @@ def train(cfg: TrainPipelineConfig, accelerator: "Accelerator | None" = None):
     model_state_dict = accelerator.get_state_dict(policy) if is_fsdp else None
     if is_main_process:
         logging.info("End of training")
+        if swanlab_logger:
+            swanlab_logger.finish()
 
         if getattr(active_cfg, "push_to_hub", False):
             unwrapped_model = accelerator.unwrap_model(policy)

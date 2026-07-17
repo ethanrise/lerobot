@@ -116,6 +116,7 @@ dataset = [
 training = [
     "lerobot[dataset]",
     "wandb>=0.24.0,<0.28.0",
+    "swanlab>=0.9.0,<1.0.0",
     "lerobot[accelerate-dep]",
 ]
 hardware = [

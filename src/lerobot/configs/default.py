@@ -78,6 +78,20 @@ class WandBConfig:
 
 
 @dataclass
+class SwanLabConfig:
+    enable: bool = False
+    project: str = "lerobot"
+    workspace: str | None = None
+    experiment_name: str | None = None
+    # SwanLab supports "online", "local", "offline", and "disabled".
+    # "cloud" is accepted by some older examples and is mapped to "online".
+    mode: str = "local"
+    # Relative paths are resolved under the training output_dir.
+    log_dir: str = "swanlog"
+    description: str | None = None
+
+
+@dataclass
 class EvalConfig:
     n_episodes: int = 50
     # `batch_size` specifies the number of environments to use in a gym.vector.VectorEnv.
